@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planner Calendar</title>
+    <title>Exam Calendar with XLSX</title>
+    <script src="node_modules/xlsx/dist/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -61,7 +62,7 @@
             background-color: #f39c12;
             color: white;
         }
-        
+
         /* To-Do List Styles */
         .todo {
             background-color: #fff;
@@ -81,12 +82,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        .todo input[type="text"] {
-            padding: 5px;
-            width: 80%;
-            border: 1px solid #ccc;
-            border-radius: 5px;
         }
         .todo button {
             padding: 5px 10px;
@@ -108,6 +103,7 @@
 <body>
 
     <div class="container">
+        <!-- Calendar -->
         <div class="calendar">
             <div class="calendar-header">
                 <button id="prevMonth">Prev</button>
@@ -117,7 +113,7 @@
             <div class="calendar-grid" id="calendarGrid"></div>
         </div>
 
-        <!-- To-Do List Section -->
+        <!-- To-Do List -->
         <div class="todo">
             <h3>To-Do List</h3>
             <input type="text" id="taskInput" placeholder="Add a task" />
@@ -126,28 +122,16 @@
         </div>
     </div>
 
+    <input type="file" id="excelFile" accept=".xlsx" />
+
     <script>
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const examDates = {
-            "03/01/2025": "ES101 Exam",
-            "06/01/2025": "MATH114 Exam",
-            "08/01/2025": "ES202 Exam",
-            "09/01/2025": "SOC104 Exam",
-            "13/01/2025": "LAW132 Exam",
-            "14/01/2025": "BC105 Exam",
-            "20/01/2025": "PHYS132 Exam",
-            "21/01/2025": "GRMN136 Exam",
-            "10/01/2025": "Workshop Phy Exam",
-            "22/01/2025": "External C Exam",
-            "15/01/2025": "External Phy Exam",
-            "10/01/2025": "External Mech Exam"
-        };
-
         let currentDate = new Date();
         let selectedMonth = currentDate.getMonth();
         let selectedYear = currentDate.getFullYear();
 
         let tasks = [];
+        let examDates = {};
 
         // Render the calendar
         function renderCalendar() {
@@ -183,6 +167,7 @@
         // Add exam dates to the to-do list
         function addExamDatesToTodo() {
             const todoList = document.getElementById('todoList');
+            todoList.innerHTML = '';
             for (const [date, exam] of Object.entries(examDates)) {
                 const li = document.createElement('li');
                 li.innerHTML = `
@@ -228,16 +213,33 @@
             renderTasks();
         }
 
-        function removeTask(exam) {
-            const todoList = document.getElementById('todoList');
-            const items = todoList.getElementsByTagName('li');
-            for (let item of items) {
-                if (item.innerHTML.includes(exam)) {
-                    item.remove();
-                    break;
-                }
-            }
-        }
+        // Handle file upload and parse the Excel file
+        document.getElementById('excelFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const data = event.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0]; // First sheet
+                const worksheet = workbook.Sheets[sheetName];
+                
+                // Get exam data from sheet
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                // Parse exam dates
+                jsonData.forEach((row) => {
+                    if (row.length > 1) {
+                        examDates[row[0]] = row[1];
+                    }
+                });
+
+                // Add exam dates to the To-Do List
+                addExamDatesToTodo();
+            };
+
+            reader.readAsBinaryString(file);
+        });
 
         document.getElementById('prevMonth').addEventListener('click', () => {
             if (selectedMonth === 0) {
@@ -260,7 +262,6 @@
         });
 
         renderCalendar();
-        addExamDatesToTodo();  // Display exams in To-Do list
     </script>
 
 </body>
